@@ -8,6 +8,8 @@ import uuid
 from contextlib import chdir
 from unittest.mock import patch
 import requests
+import io
+from PIL import Image
 from pymongo import MongoClient
 os.environ.setdefault("SCROOPY_API_KEY", uuid.uuid4().hex)
 import API
@@ -21,14 +23,20 @@ def main():
         db = mongo[name]
         try:
             failed = False
+            image_failed = False
+            image_buffer = io.BytesIO()
+            Image.new("RGB", (3, 2), "red").save(image_buffer, format="PNG")
             calls = []
             def get(url, **kwargs):
                 calls.append(url)
                 response = requests.Response()
                 response.url = url
                 response.status_code = 503 if failed and url.endswith("/child") else 200
-                response._content = (b'<h1>Changed</h1><a href="/child">A</a><a href="/child#again">B</a>'
+                response._content = (b'<h1>Changed</h1><a href="/child">A</a><a href="/child#again">B</a><img src="/image.png"><img src="/image.png">'
                     if url.endswith("/") else b'<p>Original child</p>')
+                if url.endswith("/image.png"):
+                    response.status_code = 503 if image_failed else 200
+                    response._content = image_buffer.getvalue()
                 response._content_consumed = True
                 return response
             payload = dict(URLs=["https://fixture.example/"], download_content=["y"],
@@ -57,6 +65,21 @@ def main():
                 assert db.pulls.count_documents({}) == 2
                 assert db.JSONs.count_documents({}) == 3
                 print("PASS: duplicate link fetch, stable pull refresh, retained failed page, separate settings, MongoDB ownership lock")
+                image_payload = dict(payload, image_mode="download", include_subpages=False)
+                calls.clear()
+                image_report = client.post("/scrape", json=image_payload, headers=headers).get_json()["report"]
+                assert calls.count("https://fixture.example/image.png") == 1
+                saved_image = image_report["pages"][0]["images"][0]
+                assert Path(saved_image["path"]).is_file()
+                assert not Path(image_report["workspace"]).exists()
+                stored = db.JSONs.find_one({"content.pull_id": image_report["pull_id"]})["content"]
+                assert stored["images"][0]["content_hash"] == saved_image["content_hash"]
+                image_failed = True
+                retry = client.post("/scrape", json=image_payload, headers=headers).get_json()["report"]
+                assert retry["pages"][0]["images"][0]["retained_previous"]
+                assert Path(saved_image["path"]).is_file()
+                assert len(list(Path("resources/images").iterdir())) == 1
+                print("PASS: image deduplication, durable files after run cleanup, MongoDB metadata, failed refresh preservation")
         finally:
             assert name.startswith("scroopy_pull_verify_") and len(name) == 52
             mongo.drop_database(name)

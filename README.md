@@ -13,6 +13,7 @@ not a public multi-user scraping service or a ready-made training dataset.
 - Breadth-first crawling with selectable levels and optional unlimited page count.
 - Repeated links and URL fragments are deduplicated within the webpage crawl.
 - Optional linked-PDF extraction, preserving PDF page order.
+- Image references or optional JPEG/PNG/WebP/GIF downloads, deduplicated on disk.
 - MongoDB storage grouped by a stable pull ID derived from URLs and all settings.
 - Successful refreshes update documents; failed, empty and unvisited pages retain
   their previous content. Each document identifies its last successful run.
@@ -24,6 +25,33 @@ not a public multi-user scraping service or a ready-made training dataset.
 Full mode preserves extracted text and repetition; it does not preserve raw HTML,
 render JavaScript, reconstruct visual layouts or perform OCR. Dataset export,
 saved-pull browsing, chunking, embeddings and training are future work.
+
+### Images
+
+Choose **Images → references** to save image URLs, alt text, captions and page order
+without downloading pictures, or **download** to retain local image files. Images
+are off by default. Limits default to 5 MiB per image, a separate 25 MiB image budget
+per run, and 100 unique download attempts. The image budget is additional to the
+webpage/PDF budget. Repeated image URLs are fetched once per run; identical bytes
+from different URLs or later runs share a single hash-named file.
+
+Files live in `resources/images/` and survive working-file cleanup. MongoDB stores
+their metadata and relative paths, not duplicate binary copies. Keep that directory
+with the database when backing up or moving the project. Failed image refreshes keep
+previous resource references. There is no automatic garbage collection of old image
+versions yet; do not delete files still referenced by documents or recovery envelopes.
+
+Discovery inspects up to 100 `<img>` elements per page, from the fetched HTML;
+supports `src`, common lazy-source attributes and a smallest-candidate `srcset`
+fallback. It does not render JavaScript, fetch CSS backgrounds, interpret every
+`<picture>` variant, or extract images from PDFs. Image collection covers the whole
+HTML page even in main-text mode. SVG, inline data images, audio and video are excluded.
+Images with more than 40 million pixels are rejected. No OCR/descriptions or remote
+image previews run automatically.
+
+API settings: `image_mode` (`off`, `references`, `download`), `max_image_mb`,
+`max_images_mb`, `max_images`. Image collection requires webpage extraction.
+Default off settings preserve existing pull IDs; other image settings define new pulls.
 
 ## Quick start
 

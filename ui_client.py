@@ -4,7 +4,8 @@ from urllib.parse import urlsplit
 
 
 def make_payload(raw_urls, *, database, mode, pdfs, webpage, subpages,
-                 max_pages, max_download_mb, max_run_download_mb, keep_files, include_text, max_levels=2, same_site=True):
+                 max_pages, max_download_mb, max_run_download_mb, keep_files, include_text, max_levels=2, same_site=True,
+                 image_mode="off", max_image_mb=5, max_images_mb=25, max_images=100):
     urls = list(dict.fromkeys(line.strip() for line in raw_urls.splitlines() if line.strip()))
     if not urls:
         raise ValueError("Add at least one URL, one per line.")
@@ -19,13 +20,17 @@ def make_payload(raw_urls, *, database, mode, pdfs, webpage, subpages,
         raise ValueError("Enter a database name.")
     if not webpage and not pdfs:
         raise ValueError("Choose webpage text, linked PDFs, or both.")
-    return {"URLs": urls, "download_content": ["y" if webpage else "n"] * len(urls),
+    payload = {"URLs": urls, "download_content": ["y" if webpage else "n"] * len(urls),
             "download_pdfs": ["y" if pdfs else "n"] * len(urls), "db": database.strip(),
             "extraction_mode": mode, "include_subpages": bool(subpages and webpage),
             "max_pages": None if max_pages is None else int(max_pages),
             "max_levels": int(max_levels), "same_site": same_site, "max_download_mb": int(max_download_mb),
             "max_run_download_mb": int(max_run_download_mb), "keep_work_files": keep_files,
             "include_text": include_text}
+    if image_mode != "off":
+        payload.update(image_mode=image_mode, max_image_mb=int(max_image_mb),
+                       max_images_mb=int(max_images_mb), max_images=int(max_images))
+    return payload
 
 
 def submit_scrape(payload, key):

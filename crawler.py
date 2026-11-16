@@ -32,7 +32,7 @@ def canonical_url(url):
     return urlunsplit((parts.scheme.lower(), host, path, parts.query, ""))
 
 
-def crawl_pages(urls, timeout, *, mode, main_content, max_pages, max_levels, same_site, budget):
+def crawl_pages(urls, timeout, *, mode, main_content, max_pages, max_levels, same_site, budget, collect_images=False):
     from scr_prp import _scrape_page_result, summarize_page_reports, _validate_mode
     from download_limits import DownloadBudget
     _validate_mode(mode)
@@ -86,7 +86,8 @@ def crawl_pages(urls, timeout, *, mode, main_content, max_pages, max_levels, sam
                     "selected_region": None, "requested_mode": mode,
                     "duration_ms": 0, "final_url": None, "error": None}
         else:
-            page, response = _scrape_page_result(url, timeout, mode=mode, budget=budget, request_guard=guard)
+            page, response = _scrape_page_result(url, timeout, mode=mode, budget=budget, request_guard=guard,
+                                               collect_images=collect_images)
             attempted += 1
             if response is not None and page["outcome"] in ("success", "empty"):
                 base = response.url or url

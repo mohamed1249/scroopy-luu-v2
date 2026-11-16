@@ -46,3 +46,25 @@ The separate legacy `/drive` workflow retains its previous schema in this increm
 
 Restart Flask and refresh Streamlit after updating. Reports expose pull IDs and resolved
 settings. Chunks, embeddings, dataset exports and model training remain separate steps.
+
+## Image resources (0.2.0)
+
+Opt-in `image_mode` values are `references` and `download`; default is `off`.
+Documents and page reports include `images`, an ordered array of source URLs, alt
+text and captions. `position` is the image's zero-based order among HTML img elements,
+not a character offset into extracted text. Download records add a relative local
+path, SHA-256, dimensions, format and size. Shared files live in `resources/images/`
+and are not removed by run cleanup. Failed saves retain recovery metadata pointing
+to those files; back up or move both together. Image failure details are in the page
+records and activity events. Previous file references survive failed refreshes.
+
+Image-only pages can be stored even with empty text. If a previously successful text
+extraction becomes empty while images remain, old text/sections/extraction metadata
+are retained and `text_retained_from_run` identifies their last successful text run.
+Download failures do not erase the old image files. Old unreferenced files are not
+automatically deleted. Across runs URLs are refetched to detect changes; bytes are
+deduplicated on disk, not skipped using a potentially stale URL cache.
+
+The separate image budget is additional to the webpage/PDF byte budget. Defaults are
+5 MiB/image, 25 MiB/run and 100 unique download attempts; at most 100 img elements
+are inspected per page. No processing model is involved.

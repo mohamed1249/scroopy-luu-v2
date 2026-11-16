@@ -1,4 +1,5 @@
 from crawler import canonical_url, DuplicateCrawlURL, OutsideCrawlSite
+from image_resources import ImageCollector, discover_images
 from pull_schema import pull_identity, source_document, pdf_document, document_key, utc_now
 import os
 from storage import store_document, database_preflight
@@ -104,17 +105,17 @@ def _extract_page_text(html, mode, *, with_sections=False):
     return text, selected_region, sections
 
 
-def scrape_page_report(url, timeout=(5, 20), *, mode="full", budget=None):
+def scrape_page_report(url, timeout=(5, 20), *, mode="full", budget=None, collect_images=False):
     """Return a JSON-serializable single-page result; do not write files.
 
     Request failures become report data. Invalid modes and programming errors
     still raise. Duration covers fetching and extraction, not an overall deadline.
     Empty extracted text is reported separately from a request failure.
     """
-    return _scrape_page_result(url, timeout, mode=mode, budget=budget)[0]
+    return _scrape_page_result(url, timeout, mode=mode, budget=budget, collect_images=collect_images)[0]
 
 
-def _scrape_page_result(url, timeout, *, mode, budget=None, request_guard=None):
+def _scrape_page_result(url, timeout, *, mode, budget=None, request_guard=None, collect_images=False):
     _validate_mode(mode)
     started = perf_counter()
     response = None
@@ -143,6 +144,8 @@ def _scrape_page_result(url, timeout, *, mode, budget=None, request_guard=None):
         else:
             _check_page_type(response)
             text, region, sections = _extract_page_text(response.content, mode, with_sections=True)
+            if collect_images:
+                report["images"] = discover_images(response.content, response.url)
             report.update(
                 outcome="success" if text else "empty",
                 selected_region=region,
@@ -178,7 +181,7 @@ def summarize_page_reports(pages):
 
 def scrape_page_and_subpages_report(url, timeout=(5, 20), *, mode="full",
                                     main_content=True, max_pages=20, budget=None,
-                                    max_levels=2, same_site=True):
+                                    max_levels=2, same_site=True, collect_images=False):
     """Breadth-first crawl; level 1 is the seed. None means no page-count cap.
 
     Accepts one URL or a list of starting URLs sharing one visited set and cap.
@@ -186,7 +189,8 @@ def scrape_page_and_subpages_report(url, timeout=(5, 20), *, mode="full",
     """
     from crawler import crawl_pages
     return crawl_pages(url, timeout, mode=mode, main_content=main_content,
-                       max_pages=max_pages, max_levels=max_levels, same_site=same_site, budget=budget)
+                       max_pages=max_pages, max_levels=max_levels, same_site=same_site, budget=budget,
+                       collect_images=collect_images)
 
 
 def save_seprated(dct,path):

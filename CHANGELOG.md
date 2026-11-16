@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0 — 2026-11-16
+
+- Optional image references and bounded JPEG/PNG/WebP/GIF downloads.
+- Per-run URL deduplication and hash-based file deduplication across pulls/runs.
+- Alt text, captions, dimensions, source URLs and local paths attached to documents.
+- Previous resource references retained on image download failure.
+- Separate image limits and resource tables in Streamlit; default behavior unchanged.
+
 ## 0.1.0 — 2026-11-16
 
 Initial public local-use release.

@@ -62,6 +62,20 @@ class UITests(unittest.TestCase):
         self.assertTrue(payload["same_site"])
         self.assertEqual(len(app.exception), 0)
 
+    def test_image_settings_reach_api(self):
+        app = self.app()
+        app.text_input(key="api_key").set_value("test-key")
+        app.selectbox(key="image_mode").select("download")
+        app.number_input(key="max_image_mb").set_value(2)
+        app.number_input(key="max_images_mb").set_value(8)
+        app.number_input(key="max_images").set_value(4)
+        with patch("ui_client.submit_scrape", return_value=(200, RESULT)) as submit:
+            app.button[0].click().run()
+        payload = submit.call_args.args[0]
+        self.assertEqual(payload["image_mode"], "download")
+        self.assertEqual((payload["max_image_mb"], payload["max_images_mb"], payload["max_images"]), (2, 8, 4))
+        self.assertEqual(len(app.exception), 0)
+
     def test_connection_error_is_readable(self):
         import requests
         with patch("ui_client.requests.post", side_effect=requests.exceptions.ConnectionError()):

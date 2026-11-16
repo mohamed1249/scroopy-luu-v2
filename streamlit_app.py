@@ -33,6 +33,8 @@ with st.form("scrape_form"):
         st.caption("Full preserves repeated text. Main prefers main/article content and may fall back to the body.")
         webpage = st.checkbox("Extract webpage text", value=True, key="webpage")
         pdfs = st.checkbox("Download and extract linked PDFs", value=False, key="pdfs")
+        image_mode = st.selectbox("Images", ["off", "references", "download"], key="image_mode")
+        st.caption("References save URLs, alt text and captions. Download also keeps image files locally.")
     with right:
         subpages = st.checkbox("Include linked pages", value=False, key="subpages")
         unlimited = st.checkbox("Unlimited pages", value=False, key="unlimited")
@@ -42,8 +44,11 @@ with st.form("scrape_form"):
         st.caption("3 levels = starting page → tab pages → linked posts. Unlimited ignores the page-count field; download budgets still apply. URLs are fetched once across the crawl.")
     with st.expander("Download limits and storage"):
         first, second = st.columns(2)
-        max_file = first.number_input("Per-download limit (MiB)", min_value=1, value=25, step=1, key="max_file")
-        max_run = second.number_input("Total run limit (MiB)", min_value=1, value=100, step=1, key="max_run")
+        max_file = first.number_input("Webpage/PDF file limit (MiB)", min_value=1, value=25, step=1, key="max_file")
+        max_run = second.number_input("Webpage/PDF run limit (MiB)", min_value=1, value=100, step=1, key="max_run")
+        max_image_mb = st.number_input("Per-image limit (MiB)", min_value=1, value=5, key="max_image_mb")
+        max_images_mb = st.number_input("Separate image budget (MiB)", min_value=1, value=25, key="max_images_mb")
+        max_images = st.number_input("Maximum image download attempts", min_value=1, value=100, key="max_images")
         keep_files = st.checkbox("Keep working files for inspection", value=False, key="keep_files")
         include_text = st.checkbox("Include webpage text in results", value=True, key="include_text")
         st.caption("Default: save to MongoDB, remove temporary files. Failed saves retain compressed recovery copies. PDF text is stored in MongoDB; this report shows PDF processing outcomes.")
@@ -57,7 +62,8 @@ if submitted:
                                webpage=webpage, pdfs=pdfs, subpages=subpages, max_pages=None if unlimited else max_pages,
                                max_levels=max_levels, same_site=same_site,
                                max_download_mb=max_file, max_run_download_mb=max_run,
-                               keep_files=keep_files, include_text=include_text)
+                               keep_files=keep_files, include_text=include_text, image_mode=image_mode,
+                               max_image_mb=max_image_mb, max_images_mb=max_images_mb, max_images=max_images)
         with st.spinner("Scraping and saving… This request can take several minutes."):
             status, result = submit_scrape(payload, api_key.strip())
         st.session_state.last_result = result
@@ -76,6 +82,8 @@ else:
     report = result["report"]
     st.divider()
     st.subheader("Results")
+    if report.get("images", {}).get("mode", "off") != "off":
+        st.caption(f"Images: {report['images']['mode']} · {report['images'].get('received_body_bytes', 0) / 1024:.1f} KiB received. Downloaded files are retained in resources/images.")
     st.caption(f"Last completed response: {st.session_state.last_run_time} · Run {report.get('run_id', 'unknown')}")
     if report.get("pull_id"):
         st.caption(f"Saved pull: {report['pull_id']}")
@@ -134,6 +142,9 @@ else:
                     st.json(page["error"])
                 if page.get("skip_reason"):
                     st.info(page["skip_reason"])
+                if page.get("images"):
+                    st.caption("Image resources (URLs, captions and local file paths)")
+                    st.dataframe(page["images"], hide_index=True)
                 if page.get("text") is not None:
                     st.text_area("Extracted text", value=page["text"], height=250, disabled=True,
                                  key=f"text_{report.get('run_id')}_{index}")

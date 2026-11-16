@@ -92,6 +92,16 @@ def scrape():
     include_text = payload.get("include_text", True)
     if type(include_text) is not bool:
         return {"error": "include_text must be boolean"}, 400
+    image_mode = payload.get("image_mode", "off")
+    if image_mode not in ("off", "references", "download"):
+        return {"error": "image_mode must be off, references or download"}, 400
+    image_limits = [payload.get("max_image_mb", 5), payload.get("max_images_mb", 25), payload.get("max_images", 100)]
+    if any(type(value) is not int or value < 1 for value in image_limits):
+        return {"error": "Image size/count limits must be positive integers"}, 400
+    if image_mode != "off" and not any(flag.lower() == "y" for flag in fields[2]):
+        return {"error": "Image collection requires webpage extraction"}, 400
+    images = ImageCollector(image_mode, max_file_mb=image_limits[0], max_total_mb=image_limits[1], max_images=image_limits[2])
+    image_options = {"collect_images": True} if image_mode != "off" else {}
     pull_id, pull_settings = pull_identity(payload)
     client = None
     try:
@@ -132,6 +142,7 @@ def scrape():
                 "files_retained": workspace.root.exists(), "pages": pages,
                 "summary": summarize_page_reports(pages), "events": events,
                 "downloads": budget.report(), "crawl": crawl_info,
+                "images": images.report(),
                 "storage": {"retained_bytes": sum(p.stat().st_size for p in workspace.root.rglob("*") if p.is_file()),
                             "recovery_needed": recovery_needed}}
 
@@ -155,7 +166,7 @@ def scrape():
                 batch = scrape_page_and_subpages_report(
                     crawl_seeds[0] if len(crawl_seeds) == 1 else crawl_seeds,
                     mode=mode, max_pages=max_pages, budget=budget,
-                    max_levels=max_levels, same_site=same_site)
+                    max_levels=max_levels, same_site=same_site, **image_options)
                 crawl_info = batch.get("crawl")
                 for page in batch["pages"]:
                     by_seed.setdefault(page.get("seed_url", crawl_seeds[0]), []).append(page)
@@ -188,14 +199,14 @@ def scrape():
             if include_subpages:
                 page_reports = by_seed.get(url, [])
             else:
-                page = scrape_page_report(url, mode=mode, budget=budget)
+                page = scrape_page_report(url, mode=mode, budget=budget, **image_options)
                 page.update(parent_url=None, depth=0, content_included=True)
                 page_reports = [page]
             pages.extend(page_reports)
             for page_index, page in enumerate(page_reports):
                 if page["error"] is not None:
                     errors.append(f"Failed to scrape {page['url']}: {page['error']['type']}")
-                if page["outcome"] != "success":
+                if page["outcome"] != "success" and not (page["outcome"] == "empty" and page.get("images")):
                     continue
                 if page.get("depth", 0) == 0:
                     page_folder = folder
@@ -211,6 +222,20 @@ def scrape():
                     extraction={"mode": mode, "selected_region": page.get("selected_region"),
                                 "method": "BeautifulSoup", "http_status": page.get("http_status")})
                 document["attached_PDFs"] = pdfs if page_index == 0 else {}
+                if image_mode != "off":
+                    previous = collection.find_one({"file_name": document_key(document)}) if image_mode == "download" or page["outcome"] == "empty" else None
+                    old = previous.get("content", {}) if isinstance(previous, dict) else {}
+                    if page["outcome"] == "empty" and old.get("content"):
+                        for key in ("content", "content_hash", "sections", "extraction"):
+                            document[key] = old[key]
+                        document["text_retained_from_run"] = old.get("text_retained_from_run", old.get("run_id"))
+                    document["images"] = images.collect(page.get("images", []), old.get("images", []))
+                    page["images"] = document["images"]
+                    for item in document["images"]:
+                        if item["outcome"] in ("failed", "skipped"):
+                            events.append({"stage": "image_download", "outcome": item["outcome"],
+                                           "url": item["url"], "error_type": item.get("error_type"),
+                                           "reason": item.get("reason"), "retained_previous": item.get("retained_previous", False)})
                 output_file = write_document(path, document, document_key(document))
                 if output_file is not None:
                     page["output_file"] = output_file

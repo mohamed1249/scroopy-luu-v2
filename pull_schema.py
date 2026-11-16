@@ -22,6 +22,14 @@ def pull_identity(payload):
                     max_levels=2, same_site=True, keep_work_files=False,
                     include_text=True, max_download_mb=25, max_run_download_mb=100)
     settings.update(payload)
+    # Off with default limits preserves pre-image pull identities.
+    image_defaults = dict(image_mode="off", max_image_mb=5, max_images_mb=25, max_images=100)
+    if any(payload.get(key, default) != default for key, default in image_defaults.items()):
+        for key, default in image_defaults.items():
+            settings.setdefault(key, default)
+    else:
+        for key in image_defaults:
+            settings.pop(key, None)
     # Keep seed order: it affects which pages a bounded breadth-first crawl visits.
     settings["URLs"] = [canonical_url(url) for url in settings["URLs"]]
     for key in ("download_pdfs", "download_content"):
