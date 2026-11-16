@@ -1,0 +1,16 @@
+# Changelog
+
+## 0.1.0 — 2026-11-16
+
+Initial public local-use release.
+
+- Flask scraping API and Streamlit interface.
+- Full/main text extraction, recursive page levels and optional unlimited page count.
+- Run-wide webpage URL deduplication and bounded downloads.
+- Stable saved pulls, source metadata, content hashes and ordered text ranges.
+- Partial-refresh preservation and compressed failed-write recovery.
+- Configurable API keys, localhost startup and optional legacy Drive dependencies.
+- Regression tests and Windows/Linux CI.
+
+Public hosting, JavaScript rendering, OCR, dataset export and model training are
+outside this release's scope. See README and docs/OPERATIONS.md for limitations.

@@ -1,0 +1,15 @@
+{
+  "URLs": ["https://quotes.toscrape.com/"],
+  "download_pdfs": ["n"],
+  "download_content": ["y"],
+  "db": "scroopy_dev",
+  "extraction_mode": "full",
+  "include_subpages": false,
+  "max_levels": 2,
+  "max_pages": 5,
+  "same_site": true,
+  "max_download_mb": 25,
+  "max_run_download_mb": 100,
+  "keep_work_files": false,
+  "include_text": true
+}
