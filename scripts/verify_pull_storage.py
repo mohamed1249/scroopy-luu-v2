@@ -11,7 +11,6 @@ import requests
 import io
 from PIL import Image
 from pymongo import MongoClient
-os.environ.setdefault("SCROOPY_API_KEY", uuid.uuid4().hex)
 import API
 
 
@@ -41,16 +40,15 @@ def main():
                 return response
             payload = dict(URLs=["https://fixture.example/"], download_content=["y"],
                            download_pdfs=["n"], db=name, include_subpages=True)
-            headers = {"API-KEY": API.data["scrape"]["API_KEY"]}
             with tempfile.TemporaryDirectory() as temp, chdir(temp), patch.dict(os.environ, {"MONGODB_URI": uri}), patch("download_limits.request_get", side_effect=get):
                 client = API.app.test_client()
-                first = client.post("/scrape", json=payload, headers=headers)
+                first = client.post("/scrape", json=payload)
                 assert first.status_code == 200
                 first = first.get_json()["report"]
                 assert calls.count("https://fixture.example/child") == 1
                 child = db.JSONs.find_one({"content.webpage_url": "https://fixture.example/child"})
                 failed = True
-                second = client.post("/scrape", json=payload, headers=headers).get_json()["report"]
+                second = client.post("/scrape", json=payload).get_json()["report"]
                 assert first["pull_id"] == second["pull_id"]
                 assert db.JSONs.count_documents({}) == 2
                 assert db.JSONs.find_one({"_id": child["_id"]}) == child
@@ -58,16 +56,16 @@ def main():
                 assert db.runs.count_documents({}) == 2
                 assert db.pull_locks.count_documents({}) == 0
                 db.pull_locks.insert_one({"_id": first["pull_id"]})
-                assert client.post("/scrape", json=payload, headers=headers).status_code == 409
+                assert client.post("/scrape", json=payload).status_code == 409
                 db.pull_locks.delete_one({"_id": first["pull_id"]})
-                third = client.post("/scrape", json=dict(payload, include_text=False), headers=headers).get_json()["report"]
+                third = client.post("/scrape", json=dict(payload, include_text=False)).get_json()["report"]
                 assert third["pull_id"] != first["pull_id"]
                 assert db.pulls.count_documents({}) == 2
                 assert db.JSONs.count_documents({}) == 3
                 print("PASS: duplicate link fetch, stable pull refresh, retained failed page, separate settings, MongoDB ownership lock")
                 image_payload = dict(payload, image_mode="download", include_subpages=False)
                 calls.clear()
-                image_report = client.post("/scrape", json=image_payload, headers=headers).get_json()["report"]
+                image_report = client.post("/scrape", json=image_payload).get_json()["report"]
                 assert calls.count("https://fixture.example/image.png") == 1
                 saved_image = image_report["pages"][0]["images"][0]
                 assert Path(saved_image["path"]).is_file()
@@ -75,7 +73,7 @@ def main():
                 stored = db.JSONs.find_one({"content.pull_id": image_report["pull_id"]})["content"]
                 assert stored["images"][0]["content_hash"] == saved_image["content_hash"]
                 image_failed = True
-                retry = client.post("/scrape", json=image_payload, headers=headers).get_json()["report"]
+                retry = client.post("/scrape", json=image_payload).get_json()["report"]
                 assert retry["pages"][0]["images"][0]["retained_previous"]
                 assert Path(saved_image["path"]).is_file()
                 assert len(list(Path("resources/images").iterdir())) == 1

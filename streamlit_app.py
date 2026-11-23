@@ -13,12 +13,12 @@ st.caption("Collect webpage and PDF data for training models and building AI sys
 with st.sidebar:
     st.header("Connection")
     st.caption("Local Flask API · 127.0.0.1:8080")
-    api_key = st.text_input("Scrape API key", type="password", key="api_key",
-                            help="Use the SCROOPY_API_KEY you configured in the Flask terminal. It is not included in reports or exports.")
     database = st.text_input("MongoDB database", value="", placeholder=DEFAULT_DATABASE, key="database",
                             help="Use an existing database or enter a new name. A blank name uses scroopyluu.")
     st.caption(f"Saving to: {database.strip() or DEFAULT_DATABASE}. New databases are created on the first write. Flask and MongoDB must be running.")
     with st.expander("Start the services"):
+        st.code("python launch.py", language="powershell")
+        st.caption("From the repository folder with dependencies installed. Starts both apps and checks MongoDB; Windows may require permission to start its service.")
         st.code('Get-Service MongoDB\n# If stopped, in Administrator PowerShell:\nStart-Service MongoDB', language="powershell")
         st.code('python -m flask --app API:app --no-debug run --host 127.0.0.1 --port 8080', language="powershell")
     if st.button("Clear displayed results"):
@@ -58,8 +58,6 @@ with st.form("scrape_form"):
 
 if submitted:
     try:
-        if not api_key.strip():
-            raise ValueError("Enter your scrape API key in the sidebar.")
         payload = make_payload(urls, database=database, mode="full" if scope == "Full page" else "main",
                                webpage=webpage, pdfs=pdfs, subpages=subpages, max_pages=None if unlimited else max_pages,
                                max_levels=max_levels, same_site=same_site,
@@ -67,7 +65,7 @@ if submitted:
                                keep_files=keep_files, include_text=include_text, image_mode=image_mode,
                                max_image_mb=max_image_mb, max_images_mb=max_images_mb, max_images=max_images)
         with st.spinner("Scraping and saving… This request can take several minutes."):
-            status, result = submit_scrape(payload, api_key.strip())
+            status, result = submit_scrape(payload)
         st.session_state.last_result = result
         st.session_state.last_status = status
         st.session_state.last_run_time = datetime.now().strftime("%H:%M:%S")

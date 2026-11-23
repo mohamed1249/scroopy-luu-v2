@@ -1,8 +1,7 @@
 # Operations and recovery
 
 Run from the repository root. `.env.example` documents variables but is not loaded
-automatically. Set SCROOPY_API_KEY before starting Flask; it is read at import time,
-so restart Flask after changing it. A missing key returns 503, a wrong key returns 401.
+automatically. No application API key is required. Keep the services on localhost.
 The UI sends requests only to localhost:8080. UI timeout does not cancel server work.
 
 ## Failed database writes
@@ -29,7 +28,7 @@ Restart Flask afterward. Documents written before interruption remain available.
 
 ## Optional legacy Google Drive endpoint
 
-Install `requirements-drive.txt`, configure SCROOPY_DRIVE_API_KEY and an absolute
+Install `requirements-drive.txt`, configure an absolute
 GOOGLE_APPLICATION_CREDENTIALS path to your own service-account file, and restart
 Flask. The service account needs access to the selected folder. Never place its
 credential file in the repository. The route requests Drive scope and retains its

@@ -4,12 +4,12 @@ Scroopy-Luu collects webpage and PDF data for training models and building AI
 systems. It currently collects and stores extracted text; task-specific dataset
 preparation remains a separate step. See DATASET_ROADMAP.md for proposed additions.
 
-`POST /scrape` retains the API-KEY header, legacy `errors` response field,
+`POST /scrape` requires no API key and retains the legacy `errors` response field,
 PDF workflow, MongoDB writes, and cleanup. Intermediate JSON files are now opt-in.
 The new `report` is returned in the HTTP response; it is not saved to a file.
 `/drive` also uses an isolated run directory; its Google Drive listing behavior is otherwise unchanged.
 
-Example request (use your own API key in the header):
+Example request:
 
 ```json
 {

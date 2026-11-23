@@ -33,11 +33,11 @@ def make_payload(raw_urls, *, database, mode, pdfs, webpage, subpages,
     return payload
 
 
-def submit_scrape(payload, key):
-    # Fixed local destination: never send API credentials to an editable URL.
+def submit_scrape(payload):
+    # Requests stay on the local Flask service.
     try:
         response = requests.post("http://127.0.0.1:8080/scrape", json=payload,
-                                 headers={"API-KEY": key}, timeout=(5, 600))
+                                 timeout=(5, 600))
     except requests.exceptions.Timeout:
         raise RuntimeError("The API response timed out. The server may still be working; check its terminal before retrying.") from None
     except requests.exceptions.ConnectionError:
@@ -46,8 +46,6 @@ def submit_scrape(payload, key):
         body = response.json()
     except ValueError:
         body = {}
-    if response.status_code == 401:
-        raise RuntimeError("API key rejected. Check the scrape key and try again.")
     if not isinstance(body, dict):
         raise RuntimeError("The API returned an unexpected response.")
     if response.status_code >= 400 and "report" not in body:

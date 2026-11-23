@@ -30,7 +30,7 @@ class ApiReportTests(unittest.TestCase):
                 node.args = [ast.Constant("mongodb://unused-test-host")]
         module = ast.fix_missing_locations(ast.Module(body=[route], type_ignores=[]))
         self.ns = dict(vars(scr_prp))
-        self.ns.update(request=request, abort=abort, data={"scrape": {"API_KEY": "test-key"}})
+        self.ns.update(request=request, abort=abort)
         self.ns["MongoClient"] = MagicMock()
         self.ns["save_to_mongodb"] = MagicMock()
         self.ns["download_pdfs_from_url"] = MagicMock(return_value={})
@@ -56,8 +56,7 @@ class ApiReportTests(unittest.TestCase):
 
     def post(self, payload=None):
         with contextlib.redirect_stdout(io.StringIO()):
-            return self.client.post("/scrape", json=self.payload if payload is None else payload,
-                                    headers={"API-KEY": "test-key"})
+            return self.client.post("/scrape", json=self.payload if payload is None else payload)
 
     def test_existing_persistence_and_cleanup_plus_report(self):
         response = self.post()
@@ -158,8 +157,7 @@ class ApiReportTests(unittest.TestCase):
         app = self.client.application
         def run(keep):
             with app.test_client() as client:
-                return client.post("/scrape", json=dict(self.payload, keep_work_files=keep),
-                                   headers={"API-KEY": "test-key"})
+                return client.post("/scrape", json=dict(self.payload, keep_work_files=keep))
         with ThreadPoolExecutor(max_workers=2) as pool:
             first = pool.submit(run, False)
             second = pool.submit(run, True)
@@ -192,7 +190,6 @@ class ApiReportTests(unittest.TestCase):
                 node.args = [ast.Constant("mongodb://unused-test-host")]
         module = ast.fix_missing_locations(ast.Module(body=[route], type_ignores=[]))
         ns = dict(self.ns)
-        ns["data"] = {"drive": {"API_KEY": "test-key"}}
         ns["service_account"] = MagicMock()
         ns["build"] = MagicMock()
         def fake_downloader(writer, media_request, chunksize):
@@ -213,8 +210,7 @@ class ApiReportTests(unittest.TestCase):
         app.add_url_rule("/drive", view_func=ns["drive"], methods=["POST"])
         Path("foreign.pdf").write_bytes(b"untouched")
         with contextlib.redirect_stdout(io.StringIO()), patch.dict(os.environ, {"GOOGLE_APPLICATION_CREDENTIALS": "mock-credentials.json"}):
-            response = app.test_client().post("/drive", json={"folder_id": "folder", "db": "test", "keep_work_files": True},
-                                              headers={"API-KEY": "test-key"})
+            response = app.test_client().post("/drive", json={"folder_id": "folder", "db": "test", "keep_work_files": True})
         self.assertEqual(response.status_code, 200)
         workspace = Path(response.get_json()["workspace"])
         self.assertEqual(len(list((workspace / "PDFs").glob("*.pdf"))), 2)
@@ -323,10 +319,10 @@ class ApiReportTests(unittest.TestCase):
         for page in report["pages"]:
             self.assertTrue((Path(report["workspace"]) / page["output_file"]).exists())
 
-    def test_auth_is_retained(self):
+    def test_scrape_without_authentication(self):
         response = self.client.post("/scrape", json=self.payload)
-        self.assertEqual(response.status_code, 401)
-        self.ns["MongoClient"].assert_not_called()
+        self.assertEqual(response.status_code, 200)
+        self.ns["MongoClient"].assert_called()
 
 
 if __name__ == "__main__":

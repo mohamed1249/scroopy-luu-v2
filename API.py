@@ -10,31 +10,16 @@ except ImportError:
 from scr_prp import *
 
 
-data = {
-    'scrape': {
-         'API_KEY' : os.environ.get("SCROOPY_API_KEY"),
-    },
-    'drive': {
-         'API_KEY' : os.environ.get("SCROOPY_DRIVE_API_KEY"),
-    }
-}
 
 print('Server Started!')
 app = Flask(__name__)
-app.config['CORS_HEADERS'] = ['Content-Type', 'API-KEY']
+app.config['CORS_HEADERS'] = ['Content-Type']
 allowed_origins = [value.strip() for value in os.environ.get("SCROOPY_ALLOWED_ORIGINS", "http://127.0.0.1:8501,http://localhost:8501").split(",") if value.strip()]
 cors = CORS(app, origins=allowed_origins)
 
 @app.route("/scrape", methods=['POST'])
-@cross_origin(origins=allowed_origins, headers=['Content-Type','API-KEY'])
+@cross_origin(origins=allowed_origins, headers=['Content-Type'])
 def scrape():
-
-    api_key = request.headers.get("API-KEY")
-
-    if not data["scrape"]['API_KEY']:
-        abort(503, "Set SCROOPY_API_KEY before starting Flask")
-    if api_key != data["scrape"]['API_KEY']:
-        abort(401, "Invalid API key")
 
     errors = []
     pages = []
@@ -294,15 +279,8 @@ def scrape():
     return {"errors": errors or "All Completed Successfully!", "report": result_report()}, status_code
 
 @app.route("/drive", methods=['POST'])
-@cross_origin(origins=allowed_origins, headers=['Content-Type','API-KEY'])
+@cross_origin(origins=allowed_origins, headers=['Content-Type'])
 def drive():
-
-    api_key = request.headers.get("API-KEY")
-
-    if not data["drive"]['API_KEY']:
-        abort(503, "The legacy Drive endpoint is not configured")
-    if api_key != data["drive"]['API_KEY']:
-        abort(401, "Invalid API key")
 
     if service_account is None:
         abort(503, "Install the optional Google Drive dependencies")

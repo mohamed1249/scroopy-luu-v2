@@ -21,7 +21,6 @@ import requests
 from PyPDF2 import PdfWriter
 from PyPDF2.generic import NameObject, DecodedStreamObject, DictionaryObject
 
-os.environ.setdefault("SCROOPY_API_KEY", uuid.uuid4().hex)
 import API
 from scr_prp import save_to_mongodb
 
@@ -109,7 +108,7 @@ def main():
                         "URLs": ["https://fixture.example/"], "download_content": ["y"],
                         "download_pdfs": ["y"], "db": database_name, "include_subpages": True,
                         "extraction_mode": "main", "keep_work_files": True,
-                    }, headers={"API-KEY": API.data["scrape"]["API_KEY"]})
+                    })
                 assert response.status_code == 200, response.status_code
                 report = response.get_json()["report"]
                 assert Path(report["workspace"]).exists()

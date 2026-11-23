@@ -69,28 +69,41 @@ python -m pip install -r requirements.txt
 
 On macOS/Linux, activate with `source .venv/bin/activate` instead.
 
-### Terminal 1: Flask API
+### Recommended: one-command startup
 
-Generate a private local key and keep this terminal open:
+From the repository folder, after installing dependencies:
 
 ```powershell
-$env:SCROOPY_API_KEY = python -c "import secrets; print(secrets.token_urlsafe(32))"
+.\.venv\Scripts\python.exe launch.py
+```
+
+On macOS/Linux, with your environment activated, use `python launch.py`.
+The launcher checks MongoDB, starts its Windows service if needed and permitted,
+then starts Flask and Streamlit and opens the browser. Ctrl+C stops both apps;
+MongoDB stays running. On other platforms, start MongoDB through your usual service
+manager first. Remote MongoDB connections are checked but never started locally.
+If Windows denies service access, run `Start-Service MongoDB` once in an
+administrator PowerShell, then retry the launcher normally. MongoDB must already
+be installed. Existing processes on ports 8080 or 8501 must be stopped first.
+
+The two-terminal commands below remain available for troubleshooting.
+
+### Terminal 1: Flask API
+
+Start the local API and keep this terminal open:
+
+```powershell
 $env:MONGODB_URI = "mongodb://127.0.0.1:27017/"
-$env:SCROOPY_API_KEY
 python -m flask --app API:app --no-debug run --host 127.0.0.1 --port 8080
 ```
 
-Copy the generated key into the UI when prompted. It is printed only in your local
-terminal; do not commit or share it. A missing key disables scraping (HTTP 503).
-There is no built-in default key. The `.env.example` file is a template only;
+No API key is required. The `.env.example` file is a template only;
 the application does **not** automatically load `.env` files.
 
 On macOS/Linux:
 
 ```sh
-export SCROOPY_API_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
 export MONGODB_URI="mongodb://127.0.0.1:27017/"
-printf '%s\n' "$SCROOPY_API_KEY"
 python -m flask --app API:app --no-debug run --host 127.0.0.1 --port 8080
 ```
 
@@ -102,7 +115,7 @@ Activate the same virtual environment, then:
 python -m streamlit run streamlit_app.py --server.address 127.0.0.1
 ```
 
-Open <http://127.0.0.1:8501>, paste your key, and try
+Open <http://127.0.0.1:8501> and try
 <https://quotes.toscrape.com/> with PDF downloads off and linked pages off.
 For a small crawl, enable linked pages, use two levels and a five-page limit.
 
@@ -139,12 +152,11 @@ and 100 MiB per run. Unlimited pages does not disable byte limits.
 
 ## API example
 
-The API uses the `API-KEY` header. See [examples/scrape.json](examples/scrape.json).
+No authentication header is needed. See [examples/scrape.json](examples/scrape.json).
 
 ```powershell
-$key = Read-Host "Your configured API key"
 $result = Invoke-RestMethod -Uri "http://127.0.0.1:8080/scrape" -Method Post `
-  -Headers @{"API-KEY" = $key} -ContentType "application/json" `
+  -ContentType "application/json" `
   -Body (Get-Content -Raw examples/scrape.json)
 $result | ConvertTo-Json -Depth 30
 ```
@@ -181,8 +193,7 @@ docs/, examples/             Contracts, operations and sample request
 
 ## Boundaries
 
-Keep Flask and Streamlit on localhost. A shared key is not tenant isolation:
-authenticated users can select database names. Global concurrency quotas, automatic
+Keep Flask and Streamlit on localhost. The API has no authentication; local callers can select database names. Global concurrency quotas, automatic
 stale-lock recovery, crawler pacing and robots.txt handling are not implemented.
 Use modest limits and respect site terms and access restrictions. Collection does
 not establish permission to train on or redistribute the content.

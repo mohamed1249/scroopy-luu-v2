@@ -1,8 +1,7 @@
 # Security and supported scope
 
 This early release is intended for a trusted user's local machine, bound to loopback.
-It is not a hardened public or multi-tenant service. Use a private random API key and
-do not share the MongoDB URI or enable public network access as a workaround.
+It is not a hardened public or multi-tenant service. The API has no authentication. Do not share the MongoDB URI or enable public network access as a workaround.
 
 HTTP scraping checks destinations and redirects and rejects local/private addresses.
 These checks do not replace network isolation, access control or operational quotas.

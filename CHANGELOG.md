@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Added `launch.py` to check/start local Windows MongoDB and launch both apps with one command.
+
+- Removed application API keys from Flask and Streamlit; local requests need no authentication header.
+- Simplified setup instructions and local verification scripts. Google Drive service-account credentials remain separate.
+
 ## 0.2.1 — 2026-11-23
 
 - Blank or omitted database names now use `scroopyluu` in the UI and API.

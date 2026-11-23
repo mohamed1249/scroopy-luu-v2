@@ -4,7 +4,7 @@ The `/scrape` endpoint identifies a pull using SHA-256 of canonical JSON contain
 all submitted settings and explicit defaults. This includes database, output flags,
 download budgets and crawl settings. URL fragments/default ports are normalized.
 Starting URL order remains significant because bounded crawls depend on that order.
-Settings are stored alongside the ID; API authentication headers are not settings.
+Settings are stored alongside the ID; HTTP headers are not settings.
 
 MongoDB collections:
 
