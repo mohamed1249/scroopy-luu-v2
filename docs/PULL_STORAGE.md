@@ -8,28 +8,38 @@ Settings are stored alongside the ID; HTTP headers are not settings.
 
 MongoDB collections:
 
-- `pulls`: settings, latest attempt ID/status, update time and refresh policy.
-- `runs`: small run summaries and processing events, without extracted text.
-- `JSONs`: source records under `content`, keyed by `file_name = pull_id:source_id`.
-  Existing legacy records remain readable and untouched; no automatic migration.
-- `pull_locks`: exclusive ownership during refresh. A duplicate refresh returns 409.
+- `JSONs`: one schema-3 document per unique nonempty exact text. Top-level `content`
+  contains the text, `content_hash` its SHA-256, and `sources` the source metadata.
+  Each source keeps requested/final URLs, source/pull/run IDs, collection time,
+  extraction metadata, ordered sections, images and PDF references.
+- `pulls`: settings, latest attempt status and refresh policy.
+- `runs`: summaries, download/crawl metadata, compact failure/skip counts and up to
+  200 issue examples (failures first). Final cleanup results are in the response.
+- `pull_locks`: exclusive ownership during a pull refresh.
 
-Refreshes merge successful documents. Failed, empty or unvisited pages never delete
-previous documents. This is a current collection with per-document freshness, not
-an atomic snapshot: successful pages can update during a partial run. Compare each
-document's `run_id` with the pull's `last_run_id` to identify retained earlier data.
-Removed pages are retained too; automatic deletion requires a separate explicit policy.
-No full history of document bodies is stored. Run summaries currently have no retention
-limit. Process termination can leave a lock: verify no run is active before manually
-removing that pull's lock in MongoDB. Locks are never automatically stolen.
+No separate text collection is created for new data. Older `contents` and schema-1/2
+records remain readable; existing datasets are not automatically bulk-migrated.
+Successfully refreshed legacy source rows are replaced by grouped records.
 
-Version 1 source records include `source_id` (source type plus normalized requested
-URL hash), `pull_id`, `run_id`, `content_hash` (SHA-256 of exact UTF-8 text), collection
-time, requested/final URL where available, parent URL and extraction metadata.
-Redirect aliases remain separate source IDs across runs. Hashes do not automatically
-deduplicate different sources or remove repetition within documents.
+Exact text is grouped across URLs and pulls within a database; near-duplicates and
+repetition inside a page are not removed. `sources` retains separate provenance for
+sources collected with different settings. Use `storage.find_source(collection, key)`
+to resolve one source for refresh or recovery.
 
-`content` stores text once. `sections` is ordered and contains Python Unicode character
+Whitespace-only and empty text creates no document. An empty, failed or unvisited
+source never erases earlier good text. On a successful changed-text refresh, the
+source is attached to the new content before detaching it from the old content;
+other sources are preserved. A group with no remaining sources is removed.
+These operations are not a multi-document transaction: an interrupted move can
+briefly leave a source attached to both groups; retrying that source completes it.
+
+Retained JSON exports and recovery files are self-contained per-source copies and
+may repeat text; database grouping does not change their portability. The legacy
+Drive workflow keeps its older schema. Run summaries have no automatic retention.
+Source arrays are subject to MongoDB's document size limit; a write that exceeds
+it fails with a recovery file rather than discarding source metadata.
+
+`sections` is ordered and contains Python Unicode character
 ranges `[start, end)` into that text (not UTF-8 byte offsets). HTML ranges carry tag
 types and element IDs; table cells also carry row/table IDs and span attributes.
 These are DOM text fragments, not visual-layout reconstruction or complete HTML.
@@ -58,9 +68,8 @@ and are not removed by run cleanup. Failed saves retain recovery metadata pointi
 to those files; back up or move both together. Image failure details are in the page
 records and activity events. Previous file references survive failed refreshes.
 
-Image-only pages can be stored even with empty text. If a previously successful text
-extraction becomes empty while images remain, old text/sections/extraction metadata
-are retained and `text_retained_from_run` identifies their last successful text run.
+Image-only pages with no previous text are not stored as content documents. A refresh
+that has images but empty text preserves previously collected text when available.
 Download failures do not erase the old image files. Old unreferenced files are not
 automatically deleted. Across runs URLs are refetched to detect changes; bytes are
 deduplicated on disk, not skipped using a potentially stale URL cache.

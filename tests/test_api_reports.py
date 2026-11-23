@@ -319,6 +319,16 @@ class ApiReportTests(unittest.TestCase):
         for page in report["pages"]:
             self.assertTrue((Path(report["workspace"]) / page["output_file"]).exists())
 
+    def test_brief_diagnostics_saved_with_run(self):
+        self.page.update(outcome="failed", http_status=403, text="", error={"type": "HTTPError"})
+        response = self.post()
+        report = response.get_json()["report"]
+        self.assertEqual(report["diagnostics"]["counts"]["webpage:failed:HTTPError"], 1)
+        calls = self.ns["MongoClient"].return_value.__getitem__.return_value.__getitem__.return_value.insert_one.call_args_list
+        saved_run = next(call.args[0] for call in calls if "summary" in call.args[0])
+        self.assertEqual(saved_run["diagnostics"]["details"][0]["http_status"], 403)
+        self.assertIn("downloads", saved_run)
+
     def test_scrape_without_authentication(self):
         response = self.client.post("/scrape", json=self.payload)
         self.assertEqual(response.status_code, 200)

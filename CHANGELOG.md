@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Store one nonempty text document in `JSONs` with all source metadata embedded in `sources`; reject empty content and preserve earlier text on empty refresh. Existing datasets are not bulk-migrated.
+- Persist compact crawl failure/skip diagnostics, counts, HTTP status examples and download usage with each run.
+
 - Added `launch.py` to check/start local Windows MongoDB and launch both apps with one command.
 
 - Removed application API keys from Flask and Streamlit; local requests need no authentication header.

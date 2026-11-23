@@ -46,7 +46,7 @@ def main():
                 assert first.status_code == 200
                 first = first.get_json()["report"]
                 assert calls.count("https://fixture.example/child") == 1
-                child = db.JSONs.find_one({"content.webpage_url": "https://fixture.example/child"})
+                child = db.JSONs.find_one({"sources.webpage_url": "https://fixture.example/child"})
                 failed = True
                 second = client.post("/scrape", json=payload).get_json()["report"]
                 assert first["pull_id"] == second["pull_id"]
@@ -61,7 +61,7 @@ def main():
                 third = client.post("/scrape", json=dict(payload, include_text=False)).get_json()["report"]
                 assert third["pull_id"] != first["pull_id"]
                 assert db.pulls.count_documents({}) == 2
-                assert db.JSONs.count_documents({}) == 3
+                assert db.JSONs.count_documents({}) == 2
                 print("PASS: duplicate link fetch, stable pull refresh, retained failed page, separate settings, MongoDB ownership lock")
                 image_payload = dict(payload, image_mode="download", include_subpages=False)
                 calls.clear()
@@ -70,7 +70,8 @@ def main():
                 saved_image = image_report["pages"][0]["images"][0]
                 assert Path(saved_image["path"]).is_file()
                 assert not Path(image_report["workspace"]).exists()
-                stored = db.JSONs.find_one({"content.pull_id": image_report["pull_id"]})["content"]
+                group = db.JSONs.find_one({"sources.pull_id": image_report["pull_id"]})
+                stored = next(source for source in group["sources"] if source["pull_id"] == image_report["pull_id"])
                 assert stored["images"][0]["content_hash"] == saved_image["content_hash"]
                 image_failed = True
                 retry = client.post("/scrape", json=image_payload).get_json()["report"]

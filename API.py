@@ -130,6 +130,7 @@ def scrape():
                 "summary": summarize_page_reports(pages), "events": events,
                 "downloads": budget.report(), "crawl": crawl_info,
                 "images": images.report(),
+                "diagnostics": brief_diagnostics(pages, events),
                 "storage": {"retained_bytes": sum(p.stat().st_size for p in workspace.root.rglob("*") if p.is_file()),
                             "recovery_needed": recovery_needed}}
 
@@ -210,8 +211,8 @@ def scrape():
                                 "method": "BeautifulSoup", "http_status": page.get("http_status")})
                 document["attached_PDFs"] = pdfs if page_index == 0 else {}
                 if image_mode != "off":
-                    previous = collection.find_one({"file_name": document_key(document)}) if image_mode == "download" or page["outcome"] == "empty" else None
-                    old = previous.get("content", {}) if isinstance(previous, dict) else {}
+                    previous = find_source(collection, document_key(document)) if image_mode == "download" or page["outcome"] == "empty" else None
+                    old = expand_document(collection, previous.get("content", {})) if isinstance(previous, dict) else {}
                     if page["outcome"] == "empty" and old.get("content"):
                         for key in ("content", "content_hash", "sections", "extraction"):
                             document[key] = old[key]
@@ -246,7 +247,10 @@ def scrape():
                 client[payload["db"]]["runs"].insert_one({"_id": workspace.run_id,
                     "pull_id": pull_id, "finished_at": utc_now(),
                     "status": "partial" if partial else "success",
-                    "summary": summarize_page_reports(pages), "events": events})
+                    "summary": summarize_page_reports(pages),
+                    "diagnostics": brief_diagnostics(pages, events),
+                    "downloads": budget.report(), "crawl": crawl_info,
+                    "events": [e for e in events if e.get("outcome") == "failed"][:200]})
             except Exception as exc:
                 events.append({"stage": "pull_metadata_save", "outcome": "failed",
                                "error_type": type(exc).__name__})

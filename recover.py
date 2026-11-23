@@ -1,4 +1,5 @@
 """Preview/replay explicitly selected recovery files; never scrape again."""
+from storage import expand_document, find_source
 import argparse
 import gzip
 import json
@@ -62,7 +63,13 @@ def recover_file(path, database, collection=None, *, apply=False, overwrite=Fals
         if collection is None:
             raise ValueError("Apply requires a database collection")
         key, content = envelope["file_name"], envelope["content"]
-        if overwrite:
+        if isinstance(content, dict) and content.get("source_id"):
+            existing = find_source(collection, key)
+            if existing is not None and existing.get("content") != content and not overwrite:
+                result.update(outcome="conflict", message="Different stored content; file retained.")
+                return result
+            save_to_mongodb(collection, key, content)
+        elif overwrite:
             save_to_mongodb(collection, key, content)
         else:
             existing = collection.find_one({"file_name": key})
@@ -75,7 +82,7 @@ def recover_file(path, database, collection=None, *, apply=False, overwrite=Fals
                     existing = collection.find_one({"file_name": key})
                     if existing is None:
                         raise
-            if existing is not None and existing.get("content") != content:
+            if existing is not None and expand_document(collection, existing.get("content")) != content:
                 result.update(outcome="conflict", message="Different stored content; file retained. Use --overwrite deliberately.")
                 return result
         # A successful acknowledged insert/upsert, or matching stored content,

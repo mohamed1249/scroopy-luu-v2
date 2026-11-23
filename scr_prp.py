@@ -3,7 +3,7 @@ from image_resources import ImageCollector, discover_images
 from settings import resolve_database_name
 from pull_schema import pull_identity, source_document, pdf_document, document_key, utc_now
 import os
-from storage import store_document, database_preflight
+from storage import store_document, database_preflight, expand_document, brief_diagnostics, find_source, save_content_group
 from pathlib import Path
 from run_workspace import RunWorkspace, safe_component
 import re
@@ -351,6 +351,8 @@ def save_to_mongodb(collection, file_name, content):
     A concurrent upsert winner may require retrying as an update.
     """
     collection.create_index("file_name", unique=True)
+    if isinstance(content, dict) and content.get("source_id") and "content" in content:
+        return save_content_group(collection, file_name, content)
     try:
         result = collection.update_one({"file_name": file_name}, {"$set": {"content": content}}, upsert=True)
     except DuplicateKeyError:

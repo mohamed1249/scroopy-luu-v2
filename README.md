@@ -135,8 +135,9 @@ A **pull** is a saved selection of URLs and settings. A **run** is one attempt t
 collect that pull. Changing any setting—including output flags and download
 limits—creates a different pull. URL order matters for bounded crawling.
 
-MongoDB collections are `pulls`, `runs`, `JSONs` and `pull_locks`. Documents keep
-their extracted text once, with character offsets for sections or PDF pages.
+MongoDB collections are `pulls`, `runs`, `JSONs` and `pull_locks`.
+Each `JSONs` document contains one unique nonempty text and a `sources` list with
+its URLs and extraction metadata, including section or PDF-page offsets. Run diagnostics retain reason counts and up to 200 issue examples.
 Refreshes merge successful documents; they are **not atomic snapshots**. Removed
 or unreachable pages stay until explicitly managed, so check document run IDs for
 freshness. Two refreshes of the same pull cannot run concurrently.
