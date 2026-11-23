@@ -33,7 +33,7 @@ class UITests(unittest.TestCase):
             self.assertEqual(app.metric[1].value, "1")
             self.assertEqual(app.text_area(key="text_test-run_0").value, "Hello")
             payload = submit.call_args.args[0]
-            self.assertEqual(payload["db"], "scroopy_dev")
+            self.assertEqual(payload["db"], "scroopyluu")
             self.assertEqual(payload["download_pdfs"], ["n"])
             app.run()
             submit.assert_called_once()
@@ -75,6 +75,16 @@ class UITests(unittest.TestCase):
         self.assertEqual(payload["image_mode"], "download")
         self.assertEqual((payload["max_image_mb"], payload["max_images_mb"], payload["max_images"]), (2, 8, 4))
         self.assertEqual(len(app.exception), 0)
+
+    def test_database_blank_falls_back_and_custom_is_forwarded(self):
+        app = self.app()
+        app.text_input(key="api_key").set_value("test-key")
+        for value, expected in (("", "scroopyluu"), (" scroopy_recording ", "scroopy_recording")):
+            app.text_input(key="database").set_value(value)
+            with patch("ui_client.submit_scrape", return_value=(200, RESULT)) as submit:
+                app.button[0].click().run()
+            self.assertEqual(submit.call_args.args[0]["db"], expected)
+            self.assertEqual(len(app.exception), 0)
 
     def test_connection_error_is_readable(self):
         import requests

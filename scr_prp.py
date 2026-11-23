@@ -1,5 +1,6 @@
 from crawler import canonical_url, DuplicateCrawlURL, OutsideCrawlSite
 from image_resources import ImageCollector, discover_images
+from settings import resolve_database_name
 from pull_schema import pull_identity, source_document, pdf_document, document_key, utc_now
 import os
 from storage import store_document, database_preflight

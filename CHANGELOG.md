@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1 — 2026-11-23
+
+- Blank or omitted database names now use `scroopyluu` in the UI and API.
+- Existing names are reused; new databases are created by MongoDB on first write.
+- The sidebar shows the effective destination before scraping.
+
 ## 0.2.0 — 2026-11-16
 
 - Optional image references and bounded JPEG/PNG/WebP/GIF downloads.

@@ -4,6 +4,7 @@ from collections import Counter
 from datetime import datetime
 import streamlit as st
 from ui_client import make_payload, submit_scrape
+from settings import DEFAULT_DATABASE
 
 st.set_page_config(page_title="Scroopy-Luu", page_icon="🕸️", layout="wide")
 st.title("🕸️ Scroopy-Luu")
@@ -14,8 +15,9 @@ with st.sidebar:
     st.caption("Local Flask API · 127.0.0.1:8080")
     api_key = st.text_input("Scrape API key", type="password", key="api_key",
                             help="Use the SCROOPY_API_KEY you configured in the Flask terminal. It is not included in reports or exports.")
-    database = st.text_input("MongoDB database", value="scroopy_dev", key="database")
-    st.caption("Flask and MongoDB must be running. Results are saved to this database.")
+    database = st.text_input("MongoDB database", value="", placeholder=DEFAULT_DATABASE, key="database",
+                            help="Use an existing database or enter a new name. A blank name uses scroopyluu.")
+    st.caption(f"Saving to: {database.strip() or DEFAULT_DATABASE}. New databases are created on the first write. Flask and MongoDB must be running.")
     with st.expander("Start the services"):
         st.code('Get-Service MongoDB\n# If stopped, in Administrator PowerShell:\nStart-Service MongoDB', language="powershell")
         st.code('python -m flask --app API:app --no-debug run --host 127.0.0.1 --port 8080', language="powershell")

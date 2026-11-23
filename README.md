@@ -110,6 +110,12 @@ If MongoDB was installed as a Windows service, check `Get-Service MongoDB`.
 If its status is Stopped, run `Start-Service MongoDB` from an administrator shell.
 If the service is missing, starting it will not install MongoDB.
 
+The sidebar's **MongoDB database** field accepts an existing database name or a new
+one. MongoDB creates a new database on the first successful write. Leave it blank
+to use `scroopyluu`. Names are trimmed before use. For demonstrations, use a separate
+name such as `scroopy_recording` to keep showcase datasets separate. Selecting a
+database never deletes or resets it. Missing/blank `db` in the API uses the same default.
+
 ## Pulls, runs and storage
 
 A **pull** is a saved selection of URLs and settings. A **run** is one attempt to

@@ -1,6 +1,7 @@
 """Small HTTP client for the local Streamlit interface."""
 import requests
 from urllib.parse import urlsplit
+from settings import resolve_database_name
 
 
 def make_payload(raw_urls, *, database, mode, pdfs, webpage, subpages,
@@ -16,12 +17,11 @@ def make_payload(raw_urls, *, database, mode, pdfs, webpage, subpages,
                 raise ValueError()
         except ValueError:
             raise ValueError("Use complete http:// or https:// URLs without embedded credentials.") from None
-    if not database.strip():
-        raise ValueError("Enter a database name.")
+    database = resolve_database_name(database)
     if not webpage and not pdfs:
         raise ValueError("Choose webpage text, linked PDFs, or both.")
     payload = {"URLs": urls, "download_content": ["y" if webpage else "n"] * len(urls),
-            "download_pdfs": ["y" if pdfs else "n"] * len(urls), "db": database.strip(),
+            "download_pdfs": ["y" if pdfs else "n"] * len(urls), "db": database,
             "extraction_mode": mode, "include_subpages": bool(subpages and webpage),
             "max_pages": None if max_pages is None else int(max_pages),
             "max_levels": int(max_levels), "same_site": same_site, "max_download_mb": int(max_download_mb),

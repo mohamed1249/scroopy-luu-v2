@@ -78,8 +78,10 @@ def scrape():
     except ValueError:
         return {"error": "Malformed starting URL"}, 400
     fields = list(zip(*merged.values())) if merged else [[], [], []]
-    if not isinstance(payload.get("db"), str) or not payload["db"]:
-        return {"error": "db must be a nonempty string"}, 400
+    try:
+        payload["db"] = resolve_database_name(payload.get("db"))
+    except ValueError as exc:
+        return {"error": str(exc)}, 400
 
     keep_work_files = payload.get("keep_work_files", False)
     if type(keep_work_files) is not bool:
@@ -306,10 +308,14 @@ def drive():
         abort(503, "Install the optional Google Drive dependencies")
 
     payload = request.get_json(silent=True)
-    if not isinstance(payload, dict) or not isinstance(payload.get("db"), str) or not payload["db"]:
-        return {"error": "Expected a JSON object with a nonempty db"}, 400
+    if not isinstance(payload, dict):
+        return {"error": "Expected a JSON object"}, 400
+    try:
+        payload["db"] = resolve_database_name(payload.get("db"))
+    except ValueError as exc:
+        return {"error": str(exc)}, 400
     folder_id = request.json.get('folder_id')
-    db = request.json.get("db")
+    db = payload["db"]
 
     keep_work_files = request.json.get("keep_work_files", False)
     if type(keep_work_files) is not bool:
